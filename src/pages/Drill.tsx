@@ -13,6 +13,7 @@ import {
   product,
 } from '../lib/session'
 import { getTiming, recordCorrectTime } from '../lib/storage'
+import { playSound, unlockSounds } from '../lib/sounds'
 import { FACTS_PER_TABLE, TABLE_MAX, TABLE_MIN, type FactStatus } from '../types'
 
 type Phase = 'answering' | 'feedback'
@@ -82,6 +83,7 @@ export function Drill() {
       const expected = product(base, cur.multiplier)
       const nextFacts = markMiss(factsRef.current, cur.multiplier)
       setFacts(nextFacts)
+      playSound('wrong')
       setFeedback({ kind, expected, given })
       setPhase('feedback')
     },
@@ -100,6 +102,7 @@ export function Drill() {
       setSessionCorrectMs((prev) => [...prev, elapsed])
       const nextFacts = markCorrect(factsRef.current, cur.multiplier)
       setFacts(nextFacts)
+      playSound('correct')
       setFeedback({ kind: 'correct', expected, given: typed })
       setPhase('feedback')
     },
@@ -108,6 +111,7 @@ export function Drill() {
 
   /** Tick: only used to flag a wrong answer (correct answers auto-advance). */
   const submitWrong = useCallback(() => {
+    unlockSounds()
     const cur = currentRef.current
     if (!cur || settling.current || phaseRef.current !== 'answering') return
     const typed = answerRef.current
@@ -124,6 +128,7 @@ export function Drill() {
 
   const onAnswerChange = useCallback(
     (next: string) => {
+      unlockSounds()
       setAnswer(next)
       answerRef.current = next
       if (phaseRef.current !== 'answering' || settling.current) return
