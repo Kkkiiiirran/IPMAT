@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { Analytics } from './pages/Analytics'
 import { ArithmeticComplete } from './pages/ArithmeticComplete'
 import { ArithmeticDrill } from './pages/ArithmeticDrill'
 import { Complete } from './pages/Complete'
@@ -32,6 +33,13 @@ export default function App() {
           <Route
             path="/subtraction/:levelId/done"
             element={<ArithmeticComplete op="sub" />}
+          />
+
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/analytics/:moduleId" element={<Analytics />} />
+          <Route
+            path="/analytics/:moduleId/:subModuleId"
+            element={<Analytics />}
           />
 
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -34,6 +34,9 @@ export function Complete() {
         <Link className="btn btn--primary" to={`/tables/${base}`}>
           Practice again
         </Link>
+        <Link className="btn btn--ghost" to={`/analytics/tables/${base}`}>
+          View analytics
+        </Link>
         <Link className="btn btn--ghost" to="/tables">
           Another table
         </Link>

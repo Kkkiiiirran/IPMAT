@@ -45,8 +45,19 @@ export function Home() {
           </span>
         </Link>
 
-        <div className="module-card module-card--soon" aria-disabled="true">
+        <Link className="module-card module-card--active" to="/analytics">
           <span className="module-card__index">04</span>
+          <span className="module-card__body">
+            <span className="module-card__name">Analytics</span>
+            <span className="module-card__desc">Rounds · levels · speed over time</span>
+          </span>
+          <span className="module-card__chev" aria-hidden>
+            →
+          </span>
+        </Link>
+
+        <div className="module-card module-card--soon" aria-disabled="true">
+          <span className="module-card__index">05</span>
           <span className="module-card__body">
             <span className="module-card__name">Mix tables</span>
             <span className="module-card__desc">Coming later</span>

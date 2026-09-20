@@ -502,6 +502,211 @@ a {
   color: var(--muted);
 }
 
+/* Analytics */
+.screen--analytics {
+  gap: 16px;
+  padding-bottom: 32px;
+}
+
+.ana-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.ana-tab {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ana-tab--on {
+  background: rgba(125, 206, 160, 0.15);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.ana-subhead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ana-back-sub {
+  align-self: flex-start;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.ana-subhead__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.ana-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ana-card {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--pad);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ana-card--wide {
+  grid-column: 1 / -1;
+}
+
+.ana-card__label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ana-card__value {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.ana-section__title {
+  margin: 8px 0 10px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.ana-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.ana-level-list,
+.ana-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ana-level {
+  width: 100%;
+  text-align: left;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(145deg, rgba(20, 53, 42, 0.9), rgba(10, 28, 22, 0.95));
+}
+
+.ana-level__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ana-level__name {
+  font-weight: 700;
+}
+
+.ana-level__meta {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ana-level__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.ana-level__stat {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+.ana-level__module {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ana-history__item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--pad);
+}
+
+.ana-history__main {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ana-history__label {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.ana-history__date {
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.ana-history__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ana-clear {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.sparkline {
+  color: var(--accent);
+  display: block;
+}
+
+.sparkline--down {
+  color: var(--warn-hot);
+}
+
+.sparkline--empty {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 @media (min-width: 480px) {
   .app-shell {
     padding-top: 24px;

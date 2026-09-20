@@ -18,6 +18,7 @@ import {
   type OpKind,
 } from '../lib/arithmetic'
 import { average, formatSeconds } from '../lib/format'
+import { saveRound } from '../lib/rounds'
 import { getTiming, recordCorrectTime } from '../lib/storage'
 import { playSound, unlockSounds } from '../lib/sounds'
 
@@ -55,12 +56,15 @@ export function ArithmeticDrill({ op }: ArithmeticDrillProps) {
   const [sessionCorrectMs, setSessionCorrectMs] = useState<number[]>([])
 
   const startedAt = useRef(performance.now())
+  const sessionStartedAt = useRef(performance.now())
   const settling = useRef(false)
   const factsRef = useRef(facts)
   const currentRef = useRef(current)
   const phaseRef = useRef(phase)
   const answerRef = useRef(answer)
   const sessionCorrectMsRef = useRef(sessionCorrectMs)
+  const wrongCountRef = useRef(0)
+  const timeoutCountRef = useRef(0)
 
   factsRef.current = facts
   currentRef.current = current
@@ -86,6 +90,9 @@ export function ArithmeticDrill({ op }: ArithmeticDrillProps) {
     const pool = buildArithPool(op, level)
     setFacts(pool)
     setSessionCorrectMs([])
+    wrongCountRef.current = 0
+    timeoutCountRef.current = 0
+    sessionStartedAt.current = performance.now()
     beginQuestion(pool)
   }, [level, op, beginQuestion])
 
@@ -93,6 +100,8 @@ export function ArithmeticDrill({ op }: ArithmeticDrillProps) {
     const cur = currentRef.current
     if (!cur || settling.current || phaseRef.current !== 'answering') return
     settling.current = true
+    if (kind === 'wrong') wrongCountRef.current += 1
+    else timeoutCountRef.current += 1
     const nextFacts = markMiss(factsRef.current, cur.id)
     setFacts(nextFacts)
     playSound('wrong')
@@ -157,10 +166,22 @@ export function ArithmeticDrill({ op }: ArithmeticDrillProps) {
     const delay = feedback.kind === 'correct' ? 450 : 1600
     const t = window.setTimeout(() => {
       if (allMastered(factsRef.current)) {
+        const avgMs = average(sessionCorrectMsRef.current)
+        saveRound({
+          module: op === 'add' ? 'addition' : 'subtraction',
+          subModule: level.id,
+          label: level.label,
+          totalFacts: FACTS_PER_SESSION,
+          correctCount: sessionCorrectMsRef.current.length,
+          wrongCount: wrongCountRef.current,
+          timeoutCount: timeoutCountRef.current,
+          avgCorrectMs: avgMs,
+          durationMs: performance.now() - sessionStartedAt.current,
+        })
         navigate(`${basePath}/${level.id}/done`, {
           replace: true,
           state: {
-            avgMs: average(sessionCorrectMsRef.current),
+            avgMs,
             label: level.label,
           },
         })

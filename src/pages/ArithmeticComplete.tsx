@@ -39,6 +39,12 @@ export function ArithmeticComplete({ op }: ArithmeticCompleteProps) {
         <Link className="btn btn--primary" to={`${basePath}/${level.id}`}>
           Practice again
         </Link>
+        <Link
+          className="btn btn--ghost"
+          to={`/analytics/${op === 'add' ? 'addition' : 'subtraction'}/${encodeURIComponent(level.id)}`}
+        >
+          View analytics
+        </Link>
         <Link className="btn btn--ghost" to={basePath}>
           Other levels
         </Link>

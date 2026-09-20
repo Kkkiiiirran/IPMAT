@@ -14,6 +14,7 @@ import {
 } from '../lib/session'
 import { getTiming, recordCorrectTime } from '../lib/storage'
 import { playSound, unlockSounds } from '../lib/sounds'
+import { saveRound } from '../lib/rounds'
 import { FACTS_PER_TABLE, TABLE_MAX, TABLE_MIN, type FactStatus } from '../types'
 
 type Phase = 'answering' | 'feedback'
@@ -39,12 +40,15 @@ export function Drill() {
   const [sessionCorrectMs, setSessionCorrectMs] = useState<number[]>([])
 
   const startedAt = useRef(performance.now())
+  const sessionStartedAt = useRef(performance.now())
   const settling = useRef(false)
   const factsRef = useRef(facts)
   const currentRef = useRef(current)
   const phaseRef = useRef(phase)
   const answerRef = useRef(answer)
   const sessionCorrectMsRef = useRef(sessionCorrectMs)
+  const wrongCountRef = useRef(0)
+  const timeoutCountRef = useRef(0)
 
   factsRef.current = facts
   currentRef.current = current
@@ -72,6 +76,9 @@ export function Drill() {
     const pool = buildFactPool()
     setFacts(pool)
     setSessionCorrectMs([])
+    wrongCountRef.current = 0
+    timeoutCountRef.current = 0
+    sessionStartedAt.current = performance.now()
     beginQuestion(pool)
   }, [valid, base, beginQuestion])
 
@@ -80,6 +87,8 @@ export function Drill() {
       const cur = currentRef.current
       if (!cur || settling.current || phaseRef.current !== 'answering') return
       settling.current = true
+      if (kind === 'wrong') wrongCountRef.current += 1
+      else timeoutCountRef.current += 1
       const expected = product(base, cur.multiplier)
       const nextFacts = markMiss(factsRef.current, cur.multiplier)
       setFacts(nextFacts)
@@ -153,6 +162,17 @@ export function Drill() {
     const t = window.setTimeout(() => {
       if (allMastered(factsRef.current)) {
         const avgMs = average(sessionCorrectMsRef.current)
+        saveRound({
+          module: 'tables',
+          subModule: String(base),
+          label: `Table ${base}`,
+          totalFacts: FACTS_PER_TABLE,
+          correctCount: sessionCorrectMsRef.current.length,
+          wrongCount: wrongCountRef.current,
+          timeoutCount: timeoutCountRef.current,
+          avgCorrectMs: avgMs,
+          durationMs: performance.now() - sessionStartedAt.current,
+        })
         navigate(`/tables/${base}/done`, {
           replace: true,
           state: { avgMs, correctCount: sessionCorrectMsRef.current.length },
