@@ -1,12 +1,17 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Sparkline } from '../components/Sparkline'
+import { BarChart } from '../components/charts/BarChart'
+import { LineChart } from '../components/charts/LineChart'
+import { getLevel } from '../lib/arithmetic'
+import { coverageStats, formatCoverage } from '../lib/factMemory'
 import { formatSeconds } from '../lib/format'
 import {
+  avgSeries,
   clearAllRounds,
   listRounds,
   listRoundsForSub,
   moduleLabel,
+  roundsPerSubmodule,
   summarizeSubModules,
   type ModuleId,
 } from '../lib/rounds'
@@ -56,11 +61,37 @@ export function Analytics() {
     ? subStats.filter((s) => s.subModule === subFilter)
     : subStats
 
+  const speedPoints = useMemo(() => {
+    void tick
+    const series = avgSeries(
+      activeModule === 'all' ? undefined : activeModule,
+      subFilter ?? undefined,
+      16,
+    )
+    return series.map((value, i) => ({ xLabel: String(i + 1), value }))
+  }, [activeModule, subFilter, tick])
+
+  const barItems = useMemo(() => {
+    void tick
+    if (subFilter) return []
+    return roundsPerSubmodule(activeModule === 'all' ? undefined : activeModule)
+  }, [activeModule, subFilter, tick])
+
+  const factCoverage = useMemo(() => {
+    void tick
+    if (!subFilter || (activeModule !== 'addition' && activeModule !== 'subtraction')) {
+      return null
+    }
+    const op = activeModule === 'addition' ? 'add' : 'sub'
+    const level = getLevel(op, subFilter)
+    if (!level) return null
+    return formatCoverage(coverageStats(op, level))
+  }, [activeModule, subFilter, tick])
+
   const totalRounds = rounds.length
   const overallAvgs = rounds
     .map((r) => r.avgCorrectMs)
     .filter((n): n is number => n != null)
-  const latestTrend = overallAvgs.slice(0, 12).reverse()
 
   const setModule = (m: ModuleId | 'all') => {
     if (m === 'all') navigate('/analytics')
@@ -81,9 +112,7 @@ export function Analytics() {
           ← Home
         </Link>
         <h1 className="topbar__title">Analytics</h1>
-        <p className="topbar__hint">
-          Saved on this phone · each finished round
-        </p>
+        <p className="topbar__hint">Rounds, speed, and level coverage on this phone</p>
       </header>
 
       <div className="ana-tabs" role="tablist" aria-label="Module">
@@ -111,6 +140,7 @@ export function Analytics() {
             ← All {moduleLabel(activeModule as ModuleId)} levels
           </button>
           <h2 className="ana-subhead__title">{filteredStats[0].label}</h2>
+          {factCoverage && <p className="ana-subhead__cov">{factCoverage}</p>}
         </div>
       )}
 
@@ -122,16 +152,28 @@ export function Analytics() {
         <div className="ana-card">
           <span className="ana-card__label">Best avg</span>
           <span className="ana-card__value">
-            {overallAvgs.length
-              ? formatSeconds(Math.min(...overallAvgs))
-              : '—'}
+            {overallAvgs.length ? formatSeconds(Math.min(...overallAvgs)) : '—'}
           </span>
         </div>
-        <div className="ana-card ana-card--wide">
-          <span className="ana-card__label">Speed over time</span>
-          <Sparkline values={latestTrend} />
-        </div>
       </section>
+
+      <LineChart
+        title="Avg speed over rounds"
+        points={speedPoints}
+        emptyText="Finish 2+ rounds to see the speed chart"
+      />
+
+      {!subFilter && (
+        <BarChart
+          title="Rounds by level"
+          items={barItems}
+          onSelect={(id) => {
+            const row = subStats.find((s) => s.subModule === id)
+            if (!row) return
+            navigate(`/analytics/${row.module}/${encodeURIComponent(row.subModule)}`)
+          }}
+        />
+      )}
 
       {!subFilter && (
         <section className="ana-section">
@@ -166,9 +208,8 @@ export function Analytics() {
                           ? formatSeconds(s.latestAvgMs)
                           : '—'}
                       </span>
-                      <Sparkline values={s.avgHistory} />
                     </div>
-                    {(activeModule === 'all') && (
+                    {activeModule === 'all' && (
                       <span className="ana-level__module">
                         {moduleLabel(s.module)}
                       </span>
@@ -198,9 +239,7 @@ export function Analytics() {
                 <div className="ana-history__stats">
                   <span>
                     Avg{' '}
-                    {r.avgCorrectMs != null
-                      ? formatSeconds(r.avgCorrectMs)
-                      : '—'}
+                    {r.avgCorrectMs != null ? formatSeconds(r.avgCorrectMs) : '—'}
                   </span>
                   <span>Wrong {r.wrongCount}</span>
                   <span>Miss {r.timeoutCount}</span>

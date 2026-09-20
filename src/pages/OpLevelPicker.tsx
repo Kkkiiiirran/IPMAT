@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   getLevels,
@@ -5,6 +6,7 @@ import {
   moduleTitle,
   type OpKind,
 } from '../lib/arithmetic'
+import { coverageStats, formatCoverage } from '../lib/factMemory'
 
 type OpLevelPickerProps = {
   op: OpKind
@@ -15,6 +17,11 @@ export function OpLevelPicker({ op }: OpLevelPickerProps) {
   const title = moduleTitle(op)
   const base = modulePath(op)
 
+  const coverages = useMemo(
+    () => levels.map((level) => ({ id: level.id, text: formatCoverage(coverageStats(op, level)) })),
+    [levels, op],
+  )
+
   return (
     <div className="screen">
       <header className="topbar">
@@ -22,7 +29,7 @@ export function OpLevelPicker({ op }: OpLevelPickerProps) {
           ← Home
         </Link>
         <h1 className="topbar__title">{title}</h1>
-        <p className="topbar__hint">Pick a level · 10 problems · until mastered</p>
+        <p className="topbar__hint">20 questions · weak items return · new facts unlock</p>
       </header>
 
       <nav className="level-list" aria-label={`${title} levels`}>
@@ -37,7 +44,9 @@ export function OpLevelPicker({ op }: OpLevelPickerProps) {
             </span>
             <span className="level-card__body">
               <span className="level-card__name">{level.label}</span>
-              <span className="level-card__desc">{level.short}</span>
+              <span className="level-card__desc">
+                {coverages.find((c) => c.id === level.id)?.text ?? level.short}
+              </span>
             </span>
             <span className="level-card__chev" aria-hidden>
               →

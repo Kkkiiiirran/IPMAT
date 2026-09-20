@@ -1,10 +1,12 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
-import { getLevel, modulePath, moduleTitle, type OpKind } from '../lib/arithmetic'
+import { getLevel, modulePath, moduleTitle, SESSION_LENGTH, type OpKind } from '../lib/arithmetic'
 import { formatSeconds } from '../lib/format'
 
 type CompleteState = {
   avgMs?: number | null
   label?: string
+  coverage?: string
+  questions?: number
 }
 
 type ArithmeticCompleteProps = {
@@ -24,16 +26,20 @@ export function ArithmeticComplete({ op }: ArithmeticCompleteProps) {
 
   const avgMs = state?.avgMs ?? null
   const label = state?.label ?? level.label
+  const questions = state?.questions ?? SESSION_LENGTH
 
   return (
     <div className="screen screen--complete">
-      <p className="complete__eyebrow">Session clear</p>
+      <p className="complete__eyebrow">Round complete</p>
       <h1 className="complete__title">{label}</h1>
       <p className="complete__sub">
         {avgMs == null
-          ? 'All 10 problems mastered. Nice work.'
-          : `All 10 mastered · average ${formatSeconds(avgMs)} per correct answer.`}
+          ? `${questions} questions done.`
+          : `${questions} questions · average ${formatSeconds(avgMs)} on correct answers.`}
       </p>
+      {state?.coverage && (
+        <p className="complete__coverage">{state.coverage}</p>
+      )}
 
       <div className="complete__actions">
         <Link className="btn btn--primary" to={`${basePath}/${level.id}`}>

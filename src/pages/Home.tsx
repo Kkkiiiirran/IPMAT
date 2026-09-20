@@ -1,6 +1,15 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getTheme, setTheme, THEMES, type ThemeId } from '../lib/theme'
 
 export function Home() {
+  const [theme, setThemeState] = useState<ThemeId>(() => getTheme())
+
+  const pick = (id: ThemeId) => {
+    setTheme(id)
+    setThemeState(id)
+  }
+
   return (
     <div className="screen screen--home">
       <header className="brand">
@@ -10,6 +19,24 @@ export function Home() {
           Tables, addition, and subtraction — at your pace.
         </p>
       </header>
+
+      <div className="theme-picker" aria-label="Background theme">
+        <span className="theme-picker__label">Theme</span>
+        <div className="theme-picker__swatches">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`theme-swatch${theme === t.id ? ' theme-swatch--on' : ''}`}
+              style={{ background: t.swatch }}
+              aria-label={t.label}
+              aria-pressed={theme === t.id}
+              title={t.label}
+              onClick={() => pick(t.id)}
+            />
+          ))}
+        </div>
+      </div>
 
       <nav className="module-list" aria-label="Modules">
         <Link className="module-card module-card--active" to="/tables">
@@ -27,7 +54,7 @@ export function Home() {
           <span className="module-card__index">02</span>
           <span className="module-card__body">
             <span className="module-card__name">Addition</span>
-            <span className="module-card__desc">Single → triple digit levels</span>
+            <span className="module-card__desc">20Q rounds · weak bank learning</span>
           </span>
           <span className="module-card__chev" aria-hidden>
             →
@@ -38,7 +65,7 @@ export function Home() {
           <span className="module-card__index">03</span>
           <span className="module-card__body">
             <span className="module-card__name">Subtraction</span>
-            <span className="module-card__desc">Same levels · negatives allowed</span>
+            <span className="module-card__desc">Same system · negatives allowed</span>
           </span>
           <span className="module-card__chev" aria-hidden>
             →
@@ -49,7 +76,7 @@ export function Home() {
           <span className="module-card__index">04</span>
           <span className="module-card__body">
             <span className="module-card__name">Analytics</span>
-            <span className="module-card__desc">Rounds · levels · speed over time</span>
+            <span className="module-card__desc">Charts · levels · speed over time</span>
           </span>
           <span className="module-card__chev" aria-hidden>
             →

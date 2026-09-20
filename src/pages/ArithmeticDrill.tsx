@@ -3,20 +3,22 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { NumberPad } from '../components/NumberPad'
 import { TimeBar } from '../components/TimeBar'
 import {
-  allMastered,
-  buildArithPool,
-  FACTS_PER_SESSION,
   getLevel,
-  markCorrect,
-  markMiss,
-  masteredCount,
   modulePath,
   moduleTitle,
   opSymbol,
-  pickNextFact,
-  type ArithFact,
+  SESSION_LENGTH,
+  type ArithProblem,
   type OpKind,
 } from '../lib/arithmetic'
+import {
+  coverageStats,
+  formatCoverage,
+  pickNextProblem,
+  recordCorrect,
+  recordMiss,
+  type CoverageStats,
+} from '../lib/factMemory'
 import { average, formatSeconds } from '../lib/format'
 import { saveRound } from '../lib/rounds'
 import { getTiming, recordCorrectTime } from '../lib/storage'
@@ -46,83 +48,141 @@ export function ArithmeticDrill({ op }: ArithmeticDrillProps) {
   const level = levelId ? getLevel(op, levelId) : undefined
   const basePath = modulePath(op)
 
-  const [facts, setFacts] = useState<ArithFact[]>([])
-  const [current, setCurrent] = useState<ArithFact | null>(null)
+  const [current, setCurrent] = useState<ArithProblem | null>(null)
   const [answer, setAnswer] = useState('')
   const [phase, setPhase] = useState<Phase>('answering')
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [limitMs, setLimitMs] = useState(() => getTiming().currentLimitMs)
   const [roundId, setRoundId] = useState(0)
+  const [answeredCount, setAnsweredCount] = useState(0)
   const [sessionCorrectMs, setSessionCorrectMs] = useState<number[]>([])
+  const [coverage, setCoverage] = useState<CoverageStats | null>(null)
 
   const startedAt = useRef(performance.now())
   const sessionStartedAt = useRef(performance.now())
   const settling = useRef(false)
-  const factsRef = useRef(facts)
   const currentRef = useRef(current)
   const phaseRef = useRef(phase)
   const answerRef = useRef(answer)
   const sessionCorrectMsRef = useRef(sessionCorrectMs)
+  const answeredCountRef = useRef(0)
   const wrongCountRef = useRef(0)
   const timeoutCountRef = useRef(0)
 
-  factsRef.current = facts
   currentRef.current = current
   phaseRef.current = phase
   answerRef.current = answer
   sessionCorrectMsRef.current = sessionCorrectMs
 
-  const beginQuestion = useCallback((pool: ArithFact[], avoidId?: string) => {
-    const next = pickNextFact(pool, avoidId)
-    setCurrent(next)
-    setAnswer('')
-    answerRef.current = ''
-    setFeedback(null)
-    setPhase('answering')
-    setLimitMs(getTiming().currentLimitMs)
-    setRoundId((n) => n + 1)
-    startedAt.current = performance.now()
-    settling.current = false
-  }, [])
+  const refreshCoverage = useCallback(() => {
+    if (!level) return
+    setCoverage(coverageStats(op, level))
+  }, [level, op])
+
+  const beginQuestion = useCallback(
+    (avoidId?: string) => {
+      if (!level) return
+      const next = pickNextProblem(op, level, avoidId)
+      setCurrent(next)
+      setAnswer('')
+      answerRef.current = ''
+      setFeedback(null)
+      setPhase('answering')
+      setLimitMs(getTiming().currentLimitMs)
+      setRoundId((n) => n + 1)
+      startedAt.current = performance.now()
+      settling.current = false
+      refreshCoverage()
+    },
+    [level, op, refreshCoverage],
+  )
 
   useEffect(() => {
     if (!level) return
-    const pool = buildArithPool(op, level)
-    setFacts(pool)
     setSessionCorrectMs([])
+    setAnsweredCount(0)
+    answeredCountRef.current = 0
     wrongCountRef.current = 0
     timeoutCountRef.current = 0
     sessionStartedAt.current = performance.now()
-    beginQuestion(pool)
+    beginQuestion()
   }, [level, op, beginQuestion])
 
-  const finishMiss = useCallback((kind: 'wrong' | 'timeout', given: string) => {
-    const cur = currentRef.current
-    if (!cur || settling.current || phaseRef.current !== 'answering') return
-    settling.current = true
-    if (kind === 'wrong') wrongCountRef.current += 1
-    else timeoutCountRef.current += 1
-    const nextFacts = markMiss(factsRef.current, cur.id)
-    setFacts(nextFacts)
-    playSound('wrong')
-    setFeedback({ kind, expected: cur.answer, given })
-    setPhase('feedback')
-  }, [])
+  const finishSession = useCallback(() => {
+    if (!level) return
+    const avgMs = average(sessionCorrectMsRef.current)
+    const cov = coverageStats(op, level)
+    saveRound({
+      module: op === 'add' ? 'addition' : 'subtraction',
+      subModule: level.id,
+      label: level.label,
+      totalFacts: SESSION_LENGTH,
+      correctCount: sessionCorrectMsRef.current.length,
+      wrongCount: wrongCountRef.current,
+      timeoutCount: timeoutCountRef.current,
+      avgCorrectMs: avgMs,
+      durationMs: performance.now() - sessionStartedAt.current,
+      weakCount: cov.weak,
+      masteredCount: cov.mastered,
+      seenCount: cov.seen,
+    })
+    navigate(`${basePath}/${level.id}/done`, {
+      replace: true,
+      state: {
+        avgMs,
+        label: level.label,
+        coverage: formatCoverage(cov),
+        questions: SESSION_LENGTH,
+      },
+    })
+  }, [basePath, level, navigate, op])
 
-  const acceptCorrect = useCallback((typed: string) => {
-    const cur = currentRef.current
-    if (!cur || settling.current || phaseRef.current !== 'answering') return
-    settling.current = true
-    const elapsed = performance.now() - startedAt.current
-    const timing = recordCorrectTime(elapsed)
-    setLimitMs(timing.currentLimitMs)
-    setSessionCorrectMs((prev) => [...prev, elapsed])
-    const nextFacts = markCorrect(factsRef.current, cur.id)
-    setFacts(nextFacts)
-    playSound('correct')
-    setFeedback({ kind: 'correct', expected: cur.answer, given: typed })
-    setPhase('feedback')
-  }, [])
+  const afterPrompt = useCallback(
+    (prevId: string) => {
+      const nextCount = answeredCountRef.current + 1
+      answeredCountRef.current = nextCount
+      setAnsweredCount(nextCount)
+      refreshCoverage()
+      if (nextCount >= SESSION_LENGTH) {
+        finishSession()
+        return
+      }
+      beginQuestion(prevId)
+    },
+    [beginQuestion, finishSession, refreshCoverage],
+  )
+
+  const finishMiss = useCallback(
+    (kind: 'wrong' | 'timeout', given: string) => {
+      const cur = currentRef.current
+      if (!cur || !level || settling.current || phaseRef.current !== 'answering') return
+      settling.current = true
+      if (kind === 'wrong') wrongCountRef.current += 1
+      else timeoutCountRef.current += 1
+      recordMiss(op, level.id, cur)
+      playSound('wrong')
+      setFeedback({ kind, expected: cur.answer, given })
+      setPhase('feedback')
+    },
+    [level, op],
+  )
+
+  const acceptCorrect = useCallback(
+    (typed: string) => {
+      const cur = currentRef.current
+      if (!cur || !level || settling.current || phaseRef.current !== 'answering') return
+      settling.current = true
+      const elapsed = performance.now() - startedAt.current
+      const timing = recordCorrectTime(elapsed)
+      setLimitMs(timing.currentLimitMs)
+      setSessionCorrectMs((prev) => [...prev, elapsed])
+      recordCorrect(op, level.id, cur)
+      playSound('correct')
+      setFeedback({ kind: 'correct', expected: cur.answer, given: typed })
+      setPhase('feedback')
+    },
+    [level, op],
+  )
 
   const submitWrong = useCallback(() => {
     unlockSounds()
@@ -161,45 +221,23 @@ export function ArithmeticDrill({ op }: ArithmeticDrillProps) {
   }, [finishMiss])
 
   useEffect(() => {
-    if (phase !== 'feedback' || !current || !feedback || !level) return
+    if (phase !== 'feedback' || !current || !feedback) return
 
     const delay = feedback.kind === 'correct' ? 450 : 1600
     const t = window.setTimeout(() => {
-      if (allMastered(factsRef.current)) {
-        const avgMs = average(sessionCorrectMsRef.current)
-        saveRound({
-          module: op === 'add' ? 'addition' : 'subtraction',
-          subModule: level.id,
-          label: level.label,
-          totalFacts: FACTS_PER_SESSION,
-          correctCount: sessionCorrectMsRef.current.length,
-          wrongCount: wrongCountRef.current,
-          timeoutCount: timeoutCountRef.current,
-          avgCorrectMs: avgMs,
-          durationMs: performance.now() - sessionStartedAt.current,
-        })
-        navigate(`${basePath}/${level.id}/done`, {
-          replace: true,
-          state: {
-            avgMs,
-            label: level.label,
-          },
-        })
-        return
-      }
-      beginQuestion(factsRef.current, current.id)
+      afterPrompt(current.id)
     }, delay)
 
     return () => window.clearTimeout(t)
-  }, [phase, feedback, current, level, basePath, beginQuestion, navigate])
+  }, [phase, feedback, current, afterPrompt])
 
   if (!level) {
     return <Navigate to={basePath} replace />
   }
 
-  const done = masteredCount(facts)
   const sessionAvg = average(sessionCorrectMs)
   const sym = opSymbol(op)
+  const qNum = Math.min(answeredCount + 1, SESSION_LENGTH)
 
   return (
     <div className="screen screen--drill">
@@ -210,18 +248,19 @@ export function ArithmeticDrill({ op }: ArithmeticDrillProps) {
         <div className="drill-meta">
           <span className="drill-meta__table">{level.label}</span>
           <span className="drill-meta__progress">
-            {done} / {FACTS_PER_SESSION}
+            Q {qNum} / {SESSION_LENGTH}
           </span>
         </div>
         <p className="drill-avg" aria-live="polite">
           {sessionAvg === null ? 'Avg —' : `Avg ${formatSeconds(sessionAvg)}`}
+          {coverage ? ` · ${formatCoverage(coverage)}` : ''}
         </p>
       </header>
 
       <div className="progress-track" aria-hidden>
         <div
           className="progress-track__fill"
-          style={{ width: `${(done / FACTS_PER_SESSION) * 100}%` }}
+          style={{ width: `${(answeredCount / SESSION_LENGTH) * 100}%` }}
         />
       </div>
 
@@ -259,7 +298,7 @@ export function ArithmeticDrill({ op }: ArithmeticDrillProps) {
         onSubmit={submitWrong}
         disabled={phase !== 'answering'}
         allowNegative={op === 'sub'}
-        maxLength={op === 'add' ? 4 : 4}
+        maxLength={4}
       />
     </div>
   )

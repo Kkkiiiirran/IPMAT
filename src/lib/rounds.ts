@@ -16,6 +16,10 @@ export type RoundRecord = {
   avgCorrectMs: number | null
   /** Wall-clock session length */
   durationMs: number
+  /** Snapshot after session (addition/subtraction) */
+  weakCount?: number
+  masteredCount?: number
+  seenCount?: number
 }
 
 export type SubModuleStats = {
@@ -68,6 +72,9 @@ export function saveRound(
     timeoutCount: input.timeoutCount,
     avgCorrectMs: input.avgCorrectMs,
     durationMs: input.durationMs,
+    weakCount: input.weakCount,
+    masteredCount: input.masteredCount,
+    seenCount: input.seenCount,
   }
   const all = readAll()
   all.push(record)
@@ -135,4 +142,24 @@ export function moduleLabel(module: ModuleId): string {
   if (module === 'tables') return 'Tables'
   if (module === 'addition') return 'Addition'
   return 'Subtraction'
+}
+
+/** Avg correct ms series oldest → newest for charting */
+export function avgSeries(module?: ModuleId, subModule?: string, limit = 20): number[] {
+  let rounds = listRounds(module)
+  if (subModule) rounds = rounds.filter((r) => r.subModule === subModule)
+  return rounds
+    .map((r) => r.avgCorrectMs)
+    .filter((n): n is number => n != null)
+    .slice(-limit)
+}
+
+export type BarDatum = { label: string; value: number; id: string }
+
+export function roundsPerSubmodule(module?: ModuleId): BarDatum[] {
+  return summarizeSubModules(module).map((s) => ({
+    id: s.subModule,
+    label: s.label,
+    value: s.rounds,
+  }))
 }

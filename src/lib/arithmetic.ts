@@ -9,7 +9,10 @@ export type OpLevel = {
   right: DigitSize
 }
 
-export const FACTS_PER_SESSION = 10
+export const SESSION_LENGTH = 20
+
+/** @deprecated use SESSION_LENGTH — kept for any lingering imports */
+export const FACTS_PER_SESSION = SESSION_LENGTH
 
 const DIGIT_LABEL: Record<DigitSize, string> = {
   1: 'Single',
